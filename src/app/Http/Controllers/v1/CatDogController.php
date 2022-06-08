@@ -14,21 +14,12 @@ class CatDogController extends Controller
         $this->catDogService = new CatDogService();
     }
 
-    public function index(CatDogValidatedRequest $request)
-    {
-        return [
-            'page' => $request->page,
-            'limit' => $request->limit,
-            'results' => $this->catDogService->indexHttpHandler($request->all())
-        ];
-    }
-
     public function getBreeds(CatDogValidatedRequest $request, string | null $breed = null)
     {
         return [
             'page' => $request->page,
             'limit' => $request->limit,
-            'results' => $this->catDogService->getBreedsHttpHandler($breed, $request->all())
+            'results' => $this->catDogService->getBreedsHttpHandler($breed, $request->page, $request->limit)
         ];
     }
 }

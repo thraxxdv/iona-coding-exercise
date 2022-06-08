@@ -17,92 +17,31 @@ class CatDogService {
         $this->catUrl = 'https://api.thecatapi.com/v1';
     }
 
-    /**
-     * HTTP handler for /v1/breeds & /v1/breeds/:breed endpoint
-     */
-    public function getBreedsHttpHandler(string | null $breed = null, array $params)
+    public function getBreedsHttpHandler(string | null $breed = null, int | null $page = null, int | null $limit = null )
     {
         if (!$breed) {
-            return $this->getAllBreeds($params);
+            return $this->getAllBreeds($page, $limit);
         } else {
             $params['q'] = $breed;
-            return $this->getBreedImages($params);
+            // return $this->getBreedImages($params);
         }
     }
 
-    /**
-     * HTTP handler for /v1/list
-     */
-    public function indexHttpHandler(array $params)
+    public function getAllBreeds($page, $limit)
     {
-        $animals = $this->fetchApiData("/images/search", $params);
-        return $animals->map(function($item, $key){
+        
+        $apiSplitLimits = $this->limitSplitter($limit);
+
+        $responses = Http::pool(function (Pool $pool) use ($limit, $page, $apiSplitLimits){
             return [
-                'id' => $item['id'],
-                'url' => $item['url'],
-                'width' => $item['width'],
-                'height' => $item['height'],
-            ];
-        });
-    }
-
-    public function getAllBreeds(array $params)
-    {
-        return $this->fetchApiData("/breeds", $params);
-    }
-
-    public function getIdByBreed(string $breed)
-    {
-        $breeds = $this->fetchApiData("/breeds/search", ['q' => $breed]);
-        if ($breeds->isEmpty()) {
-            abort(204, "No results found.");
-        } else {
-            $ids = $breeds->pluck('id');
-            return $ids[0];
-        }
-    }
-
-    public function getBreedImages(array $params)
-    {
-        $id = $this->getIdByBreed($params['q']);
-        $params['breed_id'] = $id;
-        $images = $this->fetchApiData("/images/search", $params);
-        return $images->map(function($item, $key){
-            return [
-                'id' => $item['id'],
-                'url' => $item['url'],
-                'width' => $item['width'],
-                'height' => $item['height'],
-            ];
-        });
-    }
-
-    /**
-     * Method to fetch from both cat and dog API simultaneously
-     *
-     * @param string $path
-     * @param array $params
-     * @return Collection
-     */
-    public function fetchApiData(string $path, array $params): Collection
-    {
-        if (array_key_exists('limit', $params)) {
-            $catParams = $params;
-            $dogParams = $params;
-            if ($path !== "/images/search") {
-                $limits = $this->limitSplitter($params['limit']);
-                $catParams['limit'] = $limits['cat'];
-                $dogParams['limit'] = $limits['dog'];
-            }
-        } else {
-            $catParams = $params;
-            $dogParams = $params;
-        }
-
-        $responses = Http::pool(function (Pool $pool) use ($path, $dogParams, $catParams){
-            return [
-                $pool->get($this->dogUrl . $path, $dogParams),
-                $pool->get($this->catUrl . $path, $catParams),
+                $pool->get($this->dogUrl . "/breeds", [
+                    'page' => $page,
+                    'limit' => !empty($limit) ? $apiSplitLimits['dog'] : null
+                ]),
+                $pool->get($this->catUrl . "/breeds", [
+                    'page' => $page,
+                    'limit' => !empty($limit) ? $apiSplitLimits['cat'] : null
+                ]),
             ];
         });
 
@@ -116,17 +55,13 @@ class CatDogService {
     }
 
     /**
-     * Function used to split limit parameter between cat and dog API
-     *
-     * @param integer $digit
-     * @return array
+     * Function to split 'limit' parameter between cat and dog api
+     * putting the ceiling value to the dog and floor value to the cat.
+     * Returns null values when digit is empty.
      */
-    public function limitSplitter(int $digit): array
+    public function limitSplitter(int | null $digit = null): array
     {
-        $half = $digit == 1 ? 0.5 : $digit / 2;
-        return [
-            'dog' => ceil($half),
-            'cat' => floor($half)
-        ];
+        $half = $digit == 1 && !empty($digit) ? 0.5 : $digit / 2;
+        return empty($digit) ? [ 'dog' => null, 'cat' => null ] : [ 'dog' => ceil($half), 'cat' => floor($half)];
     }
 }
