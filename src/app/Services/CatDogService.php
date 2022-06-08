@@ -27,6 +27,24 @@ class CatDogService {
         }
     }
 
+    public function indexHttpHandler(array $params)
+    {
+        return $this->getAnimals($params);
+    }
+
+    public function getAnimals(array $params)
+    {
+        $animals = $this->fetchApiData("/images/search", $params);
+        return $animals->map(function($item, $value){
+            return [
+                'id' => $item['id'],
+                'url' => $item['url'],
+                'width' => $item['width'],
+                'height' => $item['height']
+            ];
+        });;
+    }
+
     public function getAllBreeds(array $params): Collection
     {
         return $this->fetchApiData("/breeds", $params);
