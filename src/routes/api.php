@@ -22,4 +22,5 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::prefix('v1')->group(function(){
     Route::get('breeds/{breed?}', [CatDogController::class, 'getBreeds']);
     Route::get('list', [CatDogController::class, 'index']);
+    Route::get('{image}', [CatDogController::class, 'getImage']);
 });

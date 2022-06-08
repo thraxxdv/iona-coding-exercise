@@ -31,4 +31,9 @@ class CatDogController extends Controller
             'results' => $this->catDogService->indexHttpHandler($request->validated())
         ];
     }
+
+    public function getImage(string $image)
+    {
+        return $this->catDogService->getImageHttpHandler($image);
+    }
 }

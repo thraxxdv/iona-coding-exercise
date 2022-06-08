@@ -29,11 +29,6 @@ class CatDogService {
 
     public function indexHttpHandler(array $params)
     {
-        return $this->getAnimals($params);
-    }
-
-    public function getAnimals(array $params)
-    {
         $animals = $this->fetchApiData("/images/search", $params);
         return $animals->map(function($item, $value){
             return [
@@ -43,6 +38,17 @@ class CatDogService {
                 'height' => $item['height']
             ];
         });;
+    }
+
+    public function getImageHttpHandler(string $image)
+    {
+        $image = $this->fetchApiData('/images' . "/" . $image, ['limit' => 1]);
+        return [
+            'id' => $image['id'],
+            'url' => $image['url'],
+            'width' => $image['width'],
+            'height' => $image['height']
+        ];
     }
 
     public function getAllBreeds(array $params): Collection
@@ -79,27 +85,27 @@ class CatDogService {
 
     public function fetchApiData(string $path, array $params, $splitLimit = true)
     {
-        $responses = Http::pool(function (Pool $pool) use ($path, $params, $splitLimit){
+        try {
+            $responses = Http::pool(function (Pool $pool) use ($path, $params, $splitLimit){
 
-            $dogParams = $params;
-            $catParams = $params;
-            $apiSplitLimits = $this->limitSplitter($params['limit']);
-            $dogParams['limit'] = $splitLimit ? $apiSplitLimits['dog'] : $params['limit'];
-            $catParams['limit'] = $splitLimit ? $apiSplitLimits['cat'] : $params['limit'];
-
-            return [
-                $pool->get($this->dogUrl . $path, $dogParams),
-                $pool->get($this->catUrl . $path, $catParams),
-            ];
-        });
-
-        if ($responses[0]->ok() && $responses[1]->ok()) {
-            $dogs = $responses[0]->collect();
-            $cats = $responses[1]->collect();
+                $dogParams = $params;
+                $catParams = $params;
+                $apiSplitLimits = $this->limitSplitter($params['limit']);
+                $dogParams['limit'] = $splitLimit ? $apiSplitLimits['dog'] : $params['limit'];
+                $catParams['limit'] = $splitLimit ? $apiSplitLimits['cat'] : $params['limit'];
+    
+                return [
+                    $pool->withHeaders(['x-api-key' => '12345'])->get($this->dogUrl . $path, $dogParams),
+                    $pool->get($this->catUrl . $path, $catParams),
+                ];
+            });
+    
+            $dogs = $responses[0]->ok() ? $responses[0]->collect() : collect([]);
+            $cats = $responses[1]->ok() ? $responses[1]->collect() : collect([]);
             $animals = $dogs->merge($cats);
             return $animals;
-        } else {
-            abort(500, "An unknown error occured while fetching data.");
+        } catch (\Throwable $th) {
+            abort(500, "An error occured while fetching data.");
         }
     }
     
