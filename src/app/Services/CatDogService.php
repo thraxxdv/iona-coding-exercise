@@ -27,30 +27,35 @@ class CatDogService {
 
     public function getAllBreeds(array $params): Collection
     {
-        $apiSplitLimits = $this->limitSplitter($params['limit']);
+        return $this->fetchApiData("/breeds", $params);
+    }
 
-        $responses = Http::pool(function (Pool $pool) use ($params, $apiSplitLimits){
+    public function fetchApiData(string $path, array $params)
+    {
+        $responses = Http::pool(function (Pool $pool) use ($path, $params){
+
+            $dogParams = $params;
+            $catParams = $params;
+            $apiSplitLimits = $this->limitSplitter($params['limit']);
+            $dogParams['limit'] = $apiSplitLimits['dog'];
+            $catParams['limit'] = $apiSplitLimits['cat'];
+
             return [
-                $pool->get($this->dogUrl . "/breeds", [
-                    'page' => $params['page'],
-                    'limit' => $apiSplitLimits['dog']
-                ]),
-                $pool->get($this->catUrl . "/breeds", [
-                    'page' => $params['page'],
-                    'limit' => $apiSplitLimits['cat']
-                ]),
+                $pool->get($this->dogUrl . $path, $dogParams),
+                $pool->get($this->catUrl . $path, $catParams),
             ];
         });
 
         if ($responses[0]->ok() && $responses[1]->ok()) {
             $dogs = $responses[0]->collect();
             $cats = $responses[1]->collect();
-            return $dogs->merge($cats);
+            $animals = $dogs->merge($cats);
+            return $animals;
         } else {
             abort(500, "An unknown error occured while fetching data.");
         }
     }
-
+    
     public function limitSplitter(int $digit = null): array
     {
         $half = $digit == 1 ? 0.5 : $digit / 2;
