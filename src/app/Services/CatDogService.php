@@ -47,7 +47,14 @@ class CatDogService {
         $id = $this->getBreedId($params['q']);
         $params['breed_id'] = $id;
         $images = $this->fetchApiData("/images/search", $params);
-        return $images;
+        return $images->map(function($item, $key){
+            return [
+                'id' => $item['id'],
+                'url' => $item['url'],
+                'width' => $item['width'],
+                'height' => $item['height'],
+            ];
+        });
     }
 
     public function fetchApiData(string $path, array $params)
