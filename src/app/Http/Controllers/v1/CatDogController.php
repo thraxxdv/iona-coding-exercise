@@ -20,7 +20,7 @@ class CatDogController extends Controller
         return [
             'page' => $request->page,
             'limit' => $request->limit,
-            'results' => $this->catDogService->getBreeds($breed, $request->page, $request->limit)
+            'results' => $this->catDogService->getBreedsHttpHandler($breed, $request->all())
         ];
     }
 }

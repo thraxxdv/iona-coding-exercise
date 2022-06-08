@@ -16,38 +16,36 @@ class CatDogService {
         $this->catUrl = 'https://api.thecatapi.com/v1';
     }
 
-    public function getBreeds(string | null $breed = null, int | null $page = 0, int | null $limit = null)
+    public function getBreedsHttpHandler(string | null $breed = null, array $params)
     {
         if (!$breed) {
-            return $this->getAllBreeds($page, $limit);
+            return $this->getAllBreeds($params);
         }
     }
 
-    public function getAllBreeds(int | null $page, int | null $limit)
+    public function getAllBreeds(array $params)
     {
-        $params = [
-            'page' => $page,
-            'limit' => $limit
-        ];
-        
         return $this->fetchApiData("/breeds", $params);
     }
-    
-    public function fetchApiData(string $path, $params)
-    {
-        $page = $params['page'];
-        $limits = !empty($params['limit']) ? $this->limitSplitter($params['limit']) : null;
 
-        $responses = Http::pool(function (Pool $pool) use ($path, $page, $limits){
+    public function fetchApiData(string $path, array $params)
+    {
+
+        if (array_key_exists('limit', $params)) {
+            $catParams = $params;
+            $dogParams = $params;
+            $limits = $this->limitSplitter($params['limit']);
+            $catParams['limit'] = $limits['cat'];
+            $dogParams['limit'] = $limits['dog'];
+        } else {
+            $catParams = $params;
+            $dogParams = $params;
+        }
+
+        $responses = Http::pool(function (Pool $pool) use ($path, $dogParams, $catParams){
             return [
-                $pool->get($this->dogUrl . $path, [
-                    'page' => $page,
-                    'limit' => is_array($limits) ? $limits['dog'] : null
-                ]),
-                $pool->get($this->catUrl . $path, [
-                    'page' => $page,
-                    'limit' => is_array($limits) ? $limits['cat'] : null
-                ]),
+                $pool->get($this->dogUrl . $path, $dogParams),
+                $pool->get($this->catUrl . $path, $catParams),
             ];
         });
 
@@ -62,7 +60,7 @@ class CatDogService {
 
     public function limitSplitter(int $digit)
     {
-        $half = $digit / 2;
+        $half = $digit == 1 ? 0.5 : $digit / 2;
         return [
             'dog' => ceil($half),
             'cat' => floor($half)
