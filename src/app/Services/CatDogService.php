@@ -97,20 +97,20 @@ class CatDogService {
     }
 
     /**
-     * Function to get id of first matching search result based
-     * on the search term.
+     * Undocumented function
      *
      * @param string $breed
-     * @return integer
+     * @return int 
+     * @return string
      */
-    public function getIdByBreedName(string $breed): int
+    public function getIdByBreedName(string $breed): int | string
     {
         $breeds = $this->fetchApiData("/breeds/search", ['q' => $breed, 'limit' => null]);
         if ($breeds->isEmpty()) {
             abort(204, "No results found.");
         } else {
             $ids = $breeds->pluck('id');
-            return intval($ids[0]);
+            return $ids[0];
         }
     }
 
@@ -126,7 +126,7 @@ class CatDogService {
     public function fetchApiData(string $path, array $params, $splitLimit = true): Collection
     {
         try {
-            if ($params['limit'] == 1) {
+            if ($params['limit'] == 1 && $path == "/breeds/search") {
                 $response = Http::withHeaders(['x-api-key' => $this->dogKey])->get($this->dogUrl . $path, $params);
                 return $response->collect();
             } else {
