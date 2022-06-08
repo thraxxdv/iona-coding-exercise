@@ -11,8 +11,18 @@ use Illuminate\Support\Facades\Http;
 class CatDogController extends Controller
 {
     private $catDogService;
+    
     public function __construct() {
         $this->catDogService = new CatDogService();
+    }
+
+    public function index(CatDogValidatedRequest $request)
+    {
+        return [
+            'page' => $request->page,
+            'limit' => $request->limit,
+            'results' => $this->catDogService->indexHttpHandler($request->all())
+        ];
     }
 
     public function getBreeds(CatDogValidatedRequest $request, string | null $breed = null)

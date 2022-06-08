@@ -26,6 +26,19 @@ class CatDogService {
         }
     }
 
+    public function indexHttpHandler(array $params)
+    {
+        $animals = $this->fetchApiData("/images/search", $params);
+        return $animals->map(function($item, $key){
+            return [
+                'id' => $item['id'],
+                'url' => $item['url'],
+                'width' => $item['width'],
+                'height' => $item['height'],
+            ];
+        });
+    }
+
     public function getAllBreeds(array $params)
     {
         return $this->fetchApiData("/breeds", $params);
@@ -91,7 +104,7 @@ class CatDogService {
 
     public function limitSplitter(int $digit)
     {
-        $half = $digit == 1 ? 0.5 : $digit / 2;
+        $half = $digit == 1 || empty($digit) ? 0.5 : $digit / 2;
         return [
             'dog' => ceil($half),
             'cat' => floor($half)
