@@ -86,24 +86,28 @@ class CatDogService {
     public function fetchApiData(string $path, array $params, $splitLimit = true)
     {
         try {
-            $responses = Http::pool(function (Pool $pool) use ($path, $params, $splitLimit){
-
-                $dogParams = $params;
-                $catParams = $params;
-                $apiSplitLimits = $this->limitSplitter($params['limit']);
-                $dogParams['limit'] = $splitLimit ? $apiSplitLimits['dog'] : $params['limit'];
-                $catParams['limit'] = $splitLimit ? $apiSplitLimits['cat'] : $params['limit'];
-    
-                return [
-                    $pool->withHeaders(['x-api-key' => '12345'])->get($this->dogUrl . $path, $dogParams),
-                    $pool->get($this->catUrl . $path, $catParams),
-                ];
-            });
-    
-            $dogs = $responses[0]->ok() ? $responses[0]->collect() : collect([]);
-            $cats = $responses[1]->ok() ? $responses[1]->collect() : collect([]);
-            $animals = $dogs->merge($cats);
-            return $animals;
+            if ($params['limit'] == 1) {
+                $response = Http::get($this->dogUrl . $path, $params);
+                return $response->collect();
+            } else {
+                $responses = Http::pool(function (Pool $pool) use ($path, $params, $splitLimit) {
+                    $dogParams = $params;
+                    $catParams = $params;
+                    $apiSplitLimits = $this->limitSplitter($params['limit']);
+                    $dogParams['limit'] = $splitLimit ? $apiSplitLimits['dog'] : $params['limit'];
+                    $catParams['limit'] = $splitLimit ? $apiSplitLimits['cat'] : $params['limit'];
+                    
+                    return [
+                        $pool->withHeaders(['x-api-key' => '12345'])->get($this->dogUrl . $path, $dogParams),
+                        $pool->get($this->catUrl . $path, $catParams),
+                    ];
+                });
+        
+                $dogs = $responses[0]->ok() ? $responses[0]->collect() : collect([]);
+                $cats = $responses[1]->ok() ? $responses[1]->collect() : collect([]);
+                $animals = $dogs->merge($cats);
+                return $animals;
+            }
         } catch (\Throwable $th) {
             abort(500, "An error occured while fetching data.");
         }
