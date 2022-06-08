@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use Exception;
 use Illuminate\Http\Client\Pool;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
@@ -11,10 +10,14 @@ class CatDogService {
 
     private string $dogUrl;
     private string $catUrl;
+    private string $dogKey;
+    private string $catKey;
 
     public function __construct() {
         $this->dogUrl = 'https://api.thedogapi.com/v1';
         $this->catUrl = 'https://api.thecatapi.com/v1';
+        $this->dogKey = env('DOG_API_KEY');
+        $this->catKey = env('CAT_API_KEY');
     }
 
     public function getBreedsHttpHandler(string | null $breed = null, array $params )
@@ -40,7 +43,14 @@ class CatDogService {
         });;
     }
 
-    public function getImageHttpHandler(string $image)
+    /**
+     * Returns an single associative array when corresponding
+     * image is found on either api
+     *
+     * @param string $image
+     * @return array
+     */
+    public function getImageHttpHandler(string $image): array
     {
         $image = $this->fetchApiData('/images' . "/" . $image, ['limit' => 1]);
         return [
@@ -51,14 +61,28 @@ class CatDogService {
         ];
     }
 
+    /**
+     * Function to get all breeds
+     *
+     * @param array $params
+     * @return Collection
+     */
     public function getAllBreeds(array $params): Collection
     {
         return $this->fetchApiData("/breeds", $params);
     }
     
-
-    public function getBreedImages(array $params)
+    /**
+     * Returns a collection of images according to
+     * search term provided
+     *
+     * @param array $params
+     * @return Collection
+     */
+    public function getBreedImages(array $params): Collection
     {
+        // api only allows search images by breed id, and not by breed name directly
+        // need to get breed id first by calling a separate endpoint
         $breedId = $this->getIdByBreedName($params['q']);
         $params['breed_ids'] = $breedId;
         $images = $this->fetchApiData("/images/search", $params, false);
@@ -72,22 +96,38 @@ class CatDogService {
         });
     }
 
-    public function getIdByBreedName(string $breed)
+    /**
+     * Function to get id of first matching search result based
+     * on the search term.
+     *
+     * @param string $breed
+     * @return integer
+     */
+    public function getIdByBreedName(string $breed): int
     {
         $breeds = $this->fetchApiData("/breeds/search", ['q' => $breed, 'limit' => null]);
         if ($breeds->isEmpty()) {
             abort(204, "No results found.");
         } else {
             $ids = $breeds->pluck('id');
-            return $ids[0];
+            return intval($ids[0]);
         }
     }
 
-    public function fetchApiData(string $path, array $params, $splitLimit = true)
+    /**
+     * Method for fetching data from both APIs
+     *
+     * @param string $path URL path e.g. /v1/images/search
+     * @param array $params array that will serve as URL parameters for the request
+     * @param boolean $splitLimit when true, it splits the 'limit' parameter between the cat and dog
+     * but when false it sets the specified limit to both APIs
+     * @return Collection
+     */
+    public function fetchApiData(string $path, array $params, $splitLimit = true): Collection
     {
         try {
             if ($params['limit'] == 1) {
-                $response = Http::get($this->dogUrl . $path, $params);
+                $response = Http::withHeaders(['x-api-key' => $this->dogKey])->get($this->dogUrl . $path, $params);
                 return $response->collect();
             } else {
                 $responses = Http::pool(function (Pool $pool) use ($path, $params, $splitLimit) {
@@ -98,8 +138,8 @@ class CatDogService {
                     $catParams['limit'] = $splitLimit ? $apiSplitLimits['cat'] : $params['limit'];
                     
                     return [
-                        $pool->withHeaders(['x-api-key' => '12345'])->get($this->dogUrl . $path, $dogParams),
-                        $pool->get($this->catUrl . $path, $catParams),
+                        $pool->withHeaders(['x-api-key' => $this->dogKey])->get($this->dogUrl . $path, $dogParams),
+                        $pool->withHeaders(['x-api-key' => $this->catKey])->get($this->catUrl . $path, $catParams),
                     ];
                 });
         
@@ -113,6 +153,13 @@ class CatDogService {
         }
     }
     
+    /**
+     * Splits limit into 2, giving the ceiling to the dog when there's a .5 
+     * remaining, and giving the floor to the cat.
+     *
+     * @param integer|null $digit
+     * @return array
+     */
     public function limitSplitter(int $digit = null): array
     {
         $half = $digit == 1 ? 0.5 : $digit / 2;
