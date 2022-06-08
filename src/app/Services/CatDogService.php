@@ -22,6 +22,8 @@ class CatDogService {
         if (!$breed) {
             return $this->getAllBreeds($params);
         } else {
+            $params['q'] = $breed;
+            return $this->getBreedImages($params);
         }
     }
 
@@ -29,16 +31,43 @@ class CatDogService {
     {
         return $this->fetchApiData("/breeds", $params);
     }
+    
 
-    public function fetchApiData(string $path, array $params)
+    public function getBreedImages(array $params)
     {
-        $responses = Http::pool(function (Pool $pool) use ($path, $params){
+        $breedId = $this->getIdByBreedName($params['q']);
+        $params['breed_ids'] = $breedId;
+        $images = $this->fetchApiData("/images/search", $params, false);
+        return $images->map(function($item, $value){
+            return [
+                'id' => $item['id'],
+                'url' => $item['url'],
+                'width' => $item['width'],
+                'height' => $item['height']
+            ];
+        });
+    }
+
+    public function getIdByBreedName(string $breed)
+    {
+        $breeds = $this->fetchApiData("/breeds/search", ['q' => $breed, 'limit' => null]);
+        if ($breeds->isEmpty()) {
+            abort(204, "No results found.");
+        } else {
+            $ids = $breeds->pluck('id');
+            return $ids[0];
+        }
+    }
+
+    public function fetchApiData(string $path, array $params, $splitLimit = true)
+    {
+        $responses = Http::pool(function (Pool $pool) use ($path, $params, $splitLimit){
 
             $dogParams = $params;
             $catParams = $params;
             $apiSplitLimits = $this->limitSplitter($params['limit']);
-            $dogParams['limit'] = $apiSplitLimits['dog'];
-            $catParams['limit'] = $apiSplitLimits['cat'];
+            $dogParams['limit'] = $splitLimit ? $apiSplitLimits['dog'] : $params['limit'];
+            $catParams['limit'] = $splitLimit ? $apiSplitLimits['cat'] : $params['limit'];
 
             return [
                 $pool->get($this->dogUrl . $path, $dogParams),
