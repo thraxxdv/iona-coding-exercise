@@ -31,7 +31,7 @@ class CatDogService {
         return $this->fetchApiData("/breeds", $params);
     }
 
-    public function getBreedId(string $breed)
+    public function getIdByBreed(string $breed)
     {
         $breeds = $this->fetchApiData("/breeds/search", ['q' => $breed]);
         if ($breeds->isEmpty()) {
@@ -44,7 +44,7 @@ class CatDogService {
 
     public function getBreedImages(array $params)
     {
-        $id = $this->getBreedId($params['q']);
+        $id = $this->getIdByBreed($params['q']);
         $params['breed_id'] = $id;
         $images = $this->fetchApiData("/images/search", $params);
         return $images->map(function($item, $key){
