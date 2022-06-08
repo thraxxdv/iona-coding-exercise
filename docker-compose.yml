@@ -28,3 +28,12 @@ services:
       - "9000:9000"
     networks:
       - iona-coding-exercise
+
+  composer:
+    image: composer
+    volumes:
+      - ./src:/src
+    working_dir: /src
+    depends_on:
+      - php
+    command: install
