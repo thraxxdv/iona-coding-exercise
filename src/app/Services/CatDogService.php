@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Exception;
 use Illuminate\Http\Client\Pool;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 
 class CatDogService {
@@ -16,6 +17,9 @@ class CatDogService {
         $this->catUrl = 'https://api.thecatapi.com/v1';
     }
 
+    /**
+     * HTTP handler for /v1/breeds & /v1/breeds/:breed endpoint
+     */
     public function getBreedsHttpHandler(string | null $breed = null, array $params)
     {
         if (!$breed) {
@@ -26,6 +30,9 @@ class CatDogService {
         }
     }
 
+    /**
+     * HTTP handler for /v1/list
+     */
     public function indexHttpHandler(array $params)
     {
         $animals = $this->fetchApiData("/images/search", $params);
@@ -70,9 +77,15 @@ class CatDogService {
         });
     }
 
-    public function fetchApiData(string $path, array $params)
+    /**
+     * Method to fetch from both cat and dog API simultaneously
+     *
+     * @param string $path
+     * @param array $params
+     * @return Collection
+     */
+    public function fetchApiData(string $path, array $params): Collection
     {
-
         if (array_key_exists('limit', $params)) {
             $catParams = $params;
             $dogParams = $params;
@@ -98,13 +111,19 @@ class CatDogService {
             $cats = $responses[1]->collect();
             return $dogs->merge($cats);
         } else {
-            throw new Exception("Error while fetching data", 500);
+            abort(500, "An unknown error occured while fetching data.");
         }
     }
 
-    public function limitSplitter(int $digit)
+    /**
+     * Function used to split limit parameter between cat and dog API
+     *
+     * @param integer $digit
+     * @return array
+     */
+    public function limitSplitter(int $digit): array
     {
-        $half = $digit == 1 || empty($digit) ? 0.5 : $digit / 2;
+        $half = $digit == 1 ? 0.5 : $digit / 2;
         return [
             'dog' => ceil($half),
             'cat' => floor($half)
