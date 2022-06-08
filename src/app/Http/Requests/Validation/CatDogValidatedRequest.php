@@ -17,8 +17,8 @@ class CatDogValidatedRequest extends FormRequest
     public function rules()
     {
         return [
-            'page' => ['nullable', 'integer'],
-            'limit' => ['nullable', 'integer', 'not_regex:/^0/']
+            'page' => ['required', 'nullable', 'integer'],
+            'limit' => ['required', 'nullable', 'integer', 'not_regex:/^0/']
         ];
     }
 }

@@ -17,28 +17,26 @@ class CatDogService {
         $this->catUrl = 'https://api.thecatapi.com/v1';
     }
 
-    public function getBreedsHttpHandler(string | null $breed = null, int | null $page = null, int | null $limit = null )
+    public function getBreedsHttpHandler(string | null $breed = null, array $params )
     {
         if (!$breed) {
-            return $this->getAllBreeds($page, $limit);
+            return $this->getAllBreeds($params);
         } else {
-            $params['q'] = $breed;
-            // return $this->getBreedImages($params);
         }
     }
 
-    public function getAllBreeds($page, $limit)
+    public function getAllBreeds(array $params): Collection
     {
-        $apiSplitLimits = $this->limitSplitter($limit);
+        $apiSplitLimits = $this->limitSplitter($params['limit']);
 
-        $responses = Http::pool(function (Pool $pool) use ($page, $apiSplitLimits){
+        $responses = Http::pool(function (Pool $pool) use ($params, $apiSplitLimits){
             return [
                 $pool->get($this->dogUrl . "/breeds", [
-                    'page' => $page,
+                    'page' => $params['page'],
                     'limit' => $apiSplitLimits['dog']
                 ]),
                 $pool->get($this->catUrl . "/breeds", [
-                    'page' => $page,
+                    'page' => $params['page'],
                     'limit' => $apiSplitLimits['cat']
                 ]),
             ];
@@ -53,14 +51,9 @@ class CatDogService {
         }
     }
 
-    /**
-     * Function to split 'limit' parameter between cat and dog api
-     * putting the ceiling value to the dog and floor value to the cat.
-     * Returns null values when digit is empty.
-     */
-    public function limitSplitter(int | null $digit = null): array
+    public function limitSplitter(int $digit = null): array
     {
-        $half = $digit == 1 && !empty($digit) ? 0.5 : $digit / 2;
-        return empty($digit) ? [ 'dog' => null, 'cat' => null ] : [ 'dog' => ceil($half), 'cat' => floor($half)];
+        $half = $digit == 1 ? 0.5 : $digit / 2;
+        return [ 'dog' => ceil($half), 'cat' => floor($half)];
     }
 }
