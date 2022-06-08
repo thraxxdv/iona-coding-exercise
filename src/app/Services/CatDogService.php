@@ -29,18 +29,17 @@ class CatDogService {
 
     public function getAllBreeds($page, $limit)
     {
-        
         $apiSplitLimits = $this->limitSplitter($limit);
 
-        $responses = Http::pool(function (Pool $pool) use ($limit, $page, $apiSplitLimits){
+        $responses = Http::pool(function (Pool $pool) use ($page, $apiSplitLimits){
             return [
                 $pool->get($this->dogUrl . "/breeds", [
                     'page' => $page,
-                    'limit' => !empty($limit) ? $apiSplitLimits['dog'] : null
+                    'limit' => $apiSplitLimits['dog']
                 ]),
                 $pool->get($this->catUrl . "/breeds", [
                     'page' => $page,
-                    'limit' => !empty($limit) ? $apiSplitLimits['cat'] : null
+                    'limit' => $apiSplitLimits['cat']
                 ]),
             ];
         });
