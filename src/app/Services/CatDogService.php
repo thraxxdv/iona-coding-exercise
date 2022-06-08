@@ -20,6 +20,9 @@ class CatDogService {
     {
         if (!$breed) {
             return $this->getAllBreeds($params);
+        } else {
+            $params['q'] = $breed;
+            return $this->getBreedImages($params);
         }
     }
 
@@ -28,15 +31,36 @@ class CatDogService {
         return $this->fetchApiData("/breeds", $params);
     }
 
+    public function getBreedId(string $breed)
+    {
+        $breeds = $this->fetchApiData("/breeds/search", ['q' => $breed]);
+        if ($breeds->isEmpty()) {
+            abort(204, "No results found.");
+        } else {
+            $ids = $breeds->pluck('id');
+            return $ids[0];
+        }
+    }
+
+    public function getBreedImages(array $params)
+    {
+        $id = $this->getBreedId($params['q']);
+        $params['breed_id'] = $id;
+        $images = $this->fetchApiData("/images/search", $params);
+        return $images;
+    }
+
     public function fetchApiData(string $path, array $params)
     {
 
         if (array_key_exists('limit', $params)) {
             $catParams = $params;
             $dogParams = $params;
-            $limits = $this->limitSplitter($params['limit']);
-            $catParams['limit'] = $limits['cat'];
-            $dogParams['limit'] = $limits['dog'];
+            if ($path !== "/images/search") {
+                $limits = $this->limitSplitter($params['limit']);
+                $catParams['limit'] = $limits['cat'];
+                $dogParams['limit'] = $limits['dog'];
+            }
         } else {
             $catParams = $params;
             $dogParams = $params;
