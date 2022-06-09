@@ -53,7 +53,7 @@ class CatDogService {
     public function getImageHttpHandler(string $image): array
     {
         $image = $this->fetchApiData('/images' . "/" . $image, ['limit' => 1]);
-        return [
+        return $image->isEmpty() ? abort(400, "No results found.") : [
             'id' => $image['id'],
             'url' => $image['url'],
             'width' => $image['width'],
@@ -107,7 +107,7 @@ class CatDogService {
     {
         $breeds = $this->fetchApiData("/breeds/search", ['q' => $breed, 'limit' => null]);
         if ($breeds->isEmpty()) {
-            abort(204, "No results found.");
+            abort(400, "No results found.");
         } else {
             $ids = $breeds->pluck('id');
             return $ids[0];
